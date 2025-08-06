@@ -41,7 +41,7 @@ def main():
     st.markdown(t["description"])
     st.markdown("---")
 
-    cards = [
+    all_cards = [
         get_snb_card(),
         get_alrajhi_card(),
         get_nbd_card(),
@@ -51,21 +51,33 @@ def main():
     ]
     currency_symbol = t["currency_symbol"]
 
-    monthly_spending, optimize_button = setup_sidebar(t, currency_symbol)
+    monthly_spending, optimize_button, selected_card_names = setup_sidebar(
+        t, currency_symbol, all_cards
+    )
 
     if optimize_button:
         if sum(monthly_spending.values()) == 0:
             st.warning(t["warning_no_spend"])
         else:
             with st.spinner(t["spinner_text"]):
+                selected_cards = [
+                    card
+                    for card in all_cards
+                    if card.name in selected_card_names
+                ]
                 results_df, total_savings, chosen_plan = solve_optimization(
-                    cards, monthly_spending
+                    selected_cards, monthly_spending
                 )
             if results_df is None:
                 st.error(t["error_no_solution"])
             else:
                 display_results(
-                    results_df, total_savings, chosen_plan, cards, t, currency_symbol
+                    results_df,
+                    total_savings,
+                    chosen_plan,
+                    selected_cards,
+                    t,
+                    currency_symbol,
                 )
 
     st.markdown("---")
