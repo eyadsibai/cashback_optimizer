@@ -27,15 +27,32 @@ def main():
     st.session_state.lang = "ar" if lang_choice == "العربية" else "en"
     t = TRANSLATIONS[st.session_state.lang]
 
+    # Inject custom CSS
+    st.markdown(
+        """<style>
+    /* Decrease font size for credit card names in the multiselect widget */
+    div[data-testid="stSidebar"] div[data-baseweb="tag"] {
+        font-size: 11px;
+    }
+    
+    /* RTL-specific styles for radio buttons and sliders */
+    .stRadio[role=radiogroup]{ 
+        flex-direction: row-reverse; 
+    }
+    div[data-testid="stSlider"] > div[data-baseweb="slider"] > div { 
+        direction: ltr; 
+    }
+    </style>""",
+        unsafe_allow_html=True,
+    )
+    
+    # Apply body direction separately for RTL language
     if st.session_state.lang == "ar":
         st.markdown(
-            """<style>
-        body { direction: rtl; }
-        .stRadio [role=radiogroup]{ flex-direction: row-reverse; }
-        div[data-testid="stSlider"] > div[data-baseweb="slider"] > div { direction: ltr; }
-        </style>""",
+            "<style>body { direction: rtl; }</style>",
             unsafe_allow_html=True,
         )
+
 
     st.title(t["title"])
     st.markdown(t["description"])
@@ -51,7 +68,6 @@ def main():
     ]
     currency_symbol = t["currency_symbol"]
 
-    # This line is updated to unpack three values
     monthly_spending, optimize_button, selected_card_names = setup_sidebar(
         t, currency_symbol, all_cards
     )
@@ -61,7 +77,6 @@ def main():
             st.warning(t["warning_no_spend"])
         else:
             with st.spinner(t["spinner_text"]):
-                # Filter cards based on user selection
                 selected_cards = [
                     card
                     for card in all_cards
