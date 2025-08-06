@@ -27,12 +27,18 @@ def main():
     st.session_state.lang = "ar" if lang_choice == "العربية" else "en"
     t = TRANSLATIONS[st.session_state.lang]
 
-    # Inject custom CSS
+    # --- NEW: More aggressive CSS for the credit card names ---
     st.markdown(
         """<style>
-    /* Decrease font size for credit card names in the multiselect widget */
+    /* Target the multiselect tags in the sidebar more aggressively */
+    div[data-testid="stSidebar"] div[data-baseweb="tag"] span {
+        font-size: 10px !important;
+        line-height: 1 !important;
+    }
     div[data-testid="stSidebar"] div[data-baseweb="tag"] {
-        font-size: 11px;
+        padding: 2px 4px !important;
+        margin: 1px !important;
+        height: auto !important;
     }
     
     /* RTL-specific styles for radio buttons and sliders */
@@ -46,13 +52,11 @@ def main():
         unsafe_allow_html=True,
     )
     
-    # Apply body direction separately for RTL language
     if st.session_state.lang == "ar":
         st.markdown(
             "<style>body { direction: rtl; }</style>",
             unsafe_allow_html=True,
         )
-
 
     st.title(t["title"])
     st.markdown(t["description"])
