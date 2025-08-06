@@ -27,31 +27,26 @@ def main():
     st.session_state.lang = "ar" if lang_choice == "العربية" else "en"
     t = TRANSLATIONS[st.session_state.lang]
 
-    # --- NEW: More aggressive CSS for the credit card names ---
+    # --- FINAL CSS FIX ---
+    # This selector is highly specific to override Streamlit's defaults.
+    # It targets the text span inside the multiselect component in the sidebar.
     st.markdown(
         """<style>
-    /* Target the multiselect tags in the sidebar more aggressively */
-    div[data-testid="stSidebar"] div[data-baseweb="tag"] span {
-        font-size: 10px !important;
-        line-height: 1 !important;
+    div[data-testid="stSidebar"] div[data-baseweb="select"] div[role="listbox"] div[data-baseweb="tag"] > span {
+        font-size: 6px !important;  /* <<< CHANGE THIS VALUE TO ADJUST FONT SIZE */
     }
-    div[data-testid="stSidebar"] div[data-baseweb="tag"] {
-        padding: 2px 4px !important;
-        margin: 1px !important;
-        height: auto !important;
+
+    /* --- Language Specific Styles --- */
+    .stRadio[role=radiogroup]{
+        flex-direction: row-reverse;
     }
-    
-    /* RTL-specific styles for radio buttons and sliders */
-    .stRadio[role=radiogroup]{ 
-        flex-direction: row-reverse; 
-    }
-    div[data-testid="stSlider"] > div[data-baseweb="slider"] > div { 
-        direction: ltr; 
+    div[data-testid="stSlider"] > div[data-baseweb="slider"] > div {
+        direction: ltr;
     }
     </style>""",
         unsafe_allow_html=True,
     )
-    
+
     if st.session_state.lang == "ar":
         st.markdown(
             "<style>body { direction: rtl; }</style>",
