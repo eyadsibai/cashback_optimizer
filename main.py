@@ -1,4 +1,3 @@
-
 import streamlit as st
 
 from cards.alrajhi import get_alrajhi_card
@@ -63,7 +62,9 @@ def main():
             if results_df is None:
                 st.error(t["error_no_solution"])
             else:
-                display_results(results_df, total_savings, chosen_plan, cards, t, currency_symbol)
+                display_results(
+                    results_df, total_savings, chosen_plan, cards, t, currency_symbol
+                )
 
     st.markdown("---")
     st.info(t["footer_info"], icon="ℹ️")

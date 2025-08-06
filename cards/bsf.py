@@ -10,7 +10,7 @@ lifestyle_base_categories = [
     categories["grocery"],
     categories["travel_hotels"],
     categories["medical_care"],
-    categories["education"]
+    categories["education"],
 ]
 
 
@@ -40,17 +40,14 @@ def generate_plans(list_of_categories: list) -> list:
     # 1. Iterate through all possible combinations of 5 categories from the list.
     #    This ensures every group of 5 is considered exactly once.
     for group_of_five in combinations(list_of_categories, 5):
-
         # 2. Within this group of 5, iterate through each to select it as the main category.
         for main_category in group_of_five:
-
             # 3. The remaining 4 categories are candidates for major and minor roles.
             remaining_four = list(group_of_five)
             remaining_four.remove(main_category)
 
             # 4. From the remaining 4, choose 2 to be the major categories.
             for major_categories in combinations(remaining_four, 2):
-
                 # 5. The final 2 categories automatically become the minor ones.
                 #    We can find them using set difference for efficiency.
                 minor_categories = tuple(set(remaining_four) - set(major_categories))
@@ -59,7 +56,7 @@ def generate_plans(list_of_categories: list) -> list:
                 plan = {
                     "main": main_category,
                     "major": list(major_categories),
-                    "minor": list(minor_categories)
+                    "minor": list(minor_categories),
                 }
                 all_plans.append(plan)
 
@@ -84,8 +81,12 @@ def generate_life_style_plans() -> list[LifestylePlan]:
         minor_categories = plan["minor"]
 
         # Create a more descriptive name
-        major_cat_names = f"{major_categories[0].display_name}, {major_categories[1].display_name}"
-        minor_cat_names = f"{minor_categories[0].display_name}, {minor_categories[1].display_name}"
+        major_cat_names = (
+            f"{major_categories[0].display_name}, {major_categories[1].display_name}"
+        )
+        minor_cat_names = (
+            f"{minor_categories[0].display_name}, {minor_categories[1].display_name}"
+        )
         plan_name = f"10% on {main_category.display_name}; 3% on {major_cat_names}; 2% on {minor_cat_names}"
 
         lifestyle_plans.append(
@@ -94,13 +95,12 @@ def generate_life_style_plans() -> list[LifestylePlan]:
                 categories_rate_cap=[
                     {main_category: CardCategory(rate=0.10, cap=250)},
                     {cat: CardCategory(rate=0.03, cap=250) for cat in major_categories},
-                    {cat: CardCategory(rate=0.02, cap=250) for cat in minor_categories}
-                ]
+                    {cat: CardCategory(rate=0.02, cap=250) for cat in minor_categories},
+                ],
             )
         )
 
     return lifestyle_plans
-
 
 
 def get_lifestyle_card() -> LifestyleCard:
@@ -108,9 +108,9 @@ def get_lifestyle_card() -> LifestyleCard:
     lifestyle_plans = generate_life_style_plans()
 
     return LifestyleCard(
-            name="BSF Lifestyle",
-            reference_link="https://bsf.sa/english/personal/cards/credit/lifestyle-credit-card/lifestyle",
-            annual_fee=0,
-            base_rate=0.005,
-            plans=lifestyle_plans,
-        )
+        name="BSF Lifestyle",
+        reference_link="https://bsf.sa/english/personal/cards/credit/lifestyle-credit-card/lifestyle",
+        annual_fee=0,
+        base_rate=0.005,
+        plans=lifestyle_plans,
+    )
