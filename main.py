@@ -3,6 +3,7 @@ import streamlit as st
 from cards.alrajhi import get_alrajhi_card
 from cards.bsf import get_lifestyle_card
 from cards.nbd import get_nbd_card
+from cards.sabb import get_sabb_card
 from cards.saib import get_saib_card
 from cards.snb import get_snb_card
 from optimizer import solve_optimization
@@ -46,6 +47,7 @@ def main():
         get_nbd_card(),
         get_lifestyle_card(),
         get_saib_card(),
+        get_sabb_card(),
     ]
     currency_symbol = t["currency_symbol"]
 
