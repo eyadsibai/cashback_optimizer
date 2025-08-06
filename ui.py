@@ -300,8 +300,17 @@ def display_results(
     st.markdown(t["results_description"])
 
     if not results_df.empty:
-        category_map_by_key = {cat.key: cat for cat in categories.values()}
+        # Re-calculate cashback for the savings column, as it's not in the base results_df
+        category_map = {cat.key: cat for cat in categories.values()}
+        def get_effective_rate(row):
+            card_obj = next((c for c in cards if c.name == row['Card']), None)
+            category_obj = category_map.get(row['Category'])
+            return card_obj.categories.get(category_obj, type('obj', (object,), {'rate': card_obj.base_rate})()).rate
+        
         results_df_display = results_df.copy()
+        results_df_display['Rate'] = results_df_display.apply(get_effective_rate, axis=1)
+        
+        category_map_by_key = {cat.key: cat for cat in categories.values()}
         results_df_display["Category"] = results_df_display["Category"].apply(
             lambda x: t.get(category_map_by_key[x].display_name, x)
         )
@@ -309,43 +318,39 @@ def display_results(
         results_df_display[amount_col_name] = results_df_display["Amount"].apply(
             lambda x: f"{currency_symbol} {x:,.2f}"
         )
+        
         # Add Savings column
-        results_df_display["Savings"] = (
-            results_df["Amount"] * results_df["Rate"]
+        savings_col_name = f"Savings ({currency_symbol})"
+        results_df_display[savings_col_name] = (
+            results_df_display["Amount"] * results_df_display["Rate"]
         ).apply(lambda x: f"{currency_symbol} {x:,.2f}")
 
-        pivot_df = results_df_display.pivot(
-            index="Category", columns="Card", values=[amount_col_name, "Savings"]
+        # Pivot table for spending amounts
+        st.markdown("#### Spending Allocation")
+        pivot_df_amount = results_df_display.pivot(
+            index="Category", columns="Card", values=amount_col_name
         ).fillna(" - ")
 
         card_links = {card.name: card.reference_link for card in cards}
-        new_columns = [
+        new_columns_amount = [
             (
-                f'<a href="{card_links.get(col[1], "#")}" target="_blank" style="color: inherit; text-decoration: none;">{col[1]}</a>'
-                if col[1] in card_links
-                else col[1]
+                f'<a href="{card_links.get(col, "#")}" target="_blank" style="color: inherit; text-decoration: none;">{col}</a>'
+                if col in card_links
+                else col
             )
-            for col in pivot_df.columns
+            for col in pivot_df_amount.columns
         ]
-        pivot_df.columns = new_columns
+        pivot_df_amount.columns = new_columns_amount
+        st.markdown(pivot_df_amount.to_html(escape=False), unsafe_allow_html=True)
+        st.write("") # Spacer
 
-        st.markdown(pivot_df.to_html(escape=False), unsafe_allow_html=True)
+        # Savings per category table
+        st.markdown("#### Savings Breakdown")
+        savings_per_category = results_df_display.groupby("Category")[savings_col_name].apply(lambda x: x.str.replace(f'{currency_symbol} ', '').astype(float).sum()).reset_index()
+        savings_per_category = savings_per_category.rename(columns={savings_col_name: "Total Savings"})
+        savings_per_category["Total Savings"] = savings_per_category["Total Savings"].apply(lambda x: f"{currency_symbol} {x:,.2f}")
+        st.dataframe(savings_per_category, use_container_width=True)
 
-        # Display savings per category
-        st.markdown("### Savings Per Category")
-        savings_per_category = (
-            results_df.groupby("Category")["Monthly Cashback"]
-            .sum()
-            .reset_index()
-            .rename(columns={"Monthly Cashback": "Total Savings"})
-        )
-        savings_per_category["Category"] = savings_per_category["Category"].apply(
-            lambda x: t.get(category_map_by_key[x].display_name, x)
-        )
-        savings_per_category["Total Savings"] = savings_per_category[
-            "Total Savings"
-        ].apply(lambda x: f"{currency_symbol} {x:,.2f}")
-        st.dataframe(savings_per_category)
 
     else:
         st.write(t["results_no_spend"])

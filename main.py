@@ -51,6 +51,7 @@ def main():
     ]
     currency_symbol = t["currency_symbol"]
 
+    # This line is updated to unpack three values
     monthly_spending, optimize_button, selected_card_names = setup_sidebar(
         t, currency_symbol, all_cards
     )
@@ -60,6 +61,7 @@ def main():
             st.warning(t["warning_no_spend"])
         else:
             with st.spinner(t["spinner_text"]):
+                # Filter cards based on user selection
                 selected_cards = [
                     card
                     for card in all_cards
