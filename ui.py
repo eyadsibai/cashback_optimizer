@@ -1,6 +1,7 @@
 from typing import Dict, List, Tuple
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from models import CreditCard, LifestyleCard, categories
@@ -112,6 +113,46 @@ def generate_priority_guide(
     return guide_text if has_priorities else t["priority_none_needed"]
 
 
+def display_charts(results_df: pd.DataFrame, cards: List[CreditCard], t: dict, currency_symbol: str):
+    """Calculates and displays charts for spending and cashback using Plotly."""
+    if results_df.empty:
+        return
+
+    st.markdown(f"### {t.get('charts_header', 'Visual Insights')}")
+
+    # --- Chart 1: Spending per Card ---
+    spending_per_card = results_df.groupby('Card')['Amount'].sum().reset_index()
+    
+    spending_fig = px.bar(
+        spending_per_card,
+        x='Card',
+        y='Amount',
+        title=t.get('spending_per_card_title', 'Total Spending per Card'),
+        labels={'Card': t.get('card', 'Card'), 'Amount': f"{t.get('total_spending', 'Total Spending')} ({currency_symbol})"}
+    )
+    st.plotly_chart(spending_fig, use_container_width=True)
+
+    # --- Chart 2: Cashback per Card ---
+    results_df['Cashback'] = results_df.apply(
+        lambda row: row['Amount'] * next(c for c in cards if c.name == row['Card']).categories.get(
+            next(cat for cat in categories.values() if cat.key == row['Category']),
+            type('obj', (object,), {'rate': next(c.base_rate for c in cards if c.name == row['Card'])})()
+        ).rate,
+        axis=1
+    )
+    
+    cashback_per_card = results_df.groupby('Card')['Cashback'].sum().reset_index()
+
+    cashback_fig = px.bar(
+        cashback_per_card,
+        x='Card',
+        y='Cashback',
+        title=t.get('cashback_per_card_title', 'Estimated Monthly Cashback per Card'),
+        labels={'Card': t.get('card', 'Card'), 'Cashback': f"{t.get('total_cashback', 'Total Cashback')} ({currency_symbol})"}
+    )
+    st.plotly_chart(cashback_fig, use_container_width=True)
+
+
 def display_results(results_df: pd.DataFrame, total_savings: float, chosen_plan: str, cards: List[CreditCard], t: dict, currency_symbol: str):
     """Displays the optimization results on the main page."""
     st.success(t["success_title"])
@@ -159,6 +200,10 @@ def display_results(results_df: pd.DataFrame, total_savings: float, chosen_plan:
         st.markdown(pivot_df.to_html(escape=False), unsafe_allow_html=True)
     else:
         st.write(t["results_no_spend"])
+    st.markdown("---")
+    
+    display_charts(results_df, cards, t, currency_symbol)
+
     st.markdown("---")
     priority_guide = generate_priority_guide(results_df, cards, chosen_plan, t)
     st.markdown(priority_guide)

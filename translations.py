@@ -1,4 +1,3 @@
-
 # Dictionary for all UI translations with currency symbols
 TRANSLATIONS = {
     "en": {
@@ -29,6 +28,12 @@ TRANSLATIONS = {
         "plan_on": "on",
         "plan_and": "&",
         "footer_info": "This is a financial modeling tool, not financial advice. The model is based on the card details provided. Always verify terms and conditions with the respective banks.",
+        "charts_header": "Visual Insights",
+        "card": "Card",
+        "total_spending": "Total Spending",
+        "spending_per_card_title": "Total Spending per Card",
+        "total_cashback": "Total Cashback",
+        "cashback_per_card_title": "Estimated Monthly Cashback per Card",
         "Dining": "Dining",
         "Grocery": "Grocery",
         "Gas Station": "Gas Station",
@@ -68,6 +73,12 @@ TRANSLATIONS = {
         "plan_on": "على",
         "plan_and": "و",
         "footer_info": "هذه أداة نمذجة مالية وليست نصيحة مالية. يعتمد النموذج على تفاصيل البطاقة المقدمة. تحقق دائمًا من الشروط والأحكام مع البنوك المعنية.",
+        "charts_header": "رؤى مرئية",
+        "card": "البطاقة",
+        "total_spending": "إجمالي الإنفاق",
+        "spending_per_card_title": "إجمالي الإنفاق لكل بطاقة",
+        "total_cashback": "إجمالي الاسترداد النقدي",
+        "cashback_per_card_title": "الاسترداد النقدي الشهري المقدر لكل بطاقة",
         "Dining": "مطاعم ومقاهي",
         "Grocery": "بقالة وسوبرماركت",
         "Gas Station": "محطات وقود",
