@@ -10,7 +10,7 @@ def get_alrajhi_card() -> CreditCard:
     return CreditCard(
             name="Alrajhi Signature Cashback Plus",
             reference_link="https://www.alrajhibank.com.sa/en/Personal/Cards/Cashback-Cards/Signature-Cashback-Plus",
-            annual_fee=250,
+            annual_fee=450,
             monthly_cap=500,
             grouped_monthly_caps=[
                 (200, [ categories["international_spend_non_eur"], categories["other_local_spend"] ])
