@@ -11,9 +11,8 @@ import streamlit as st
 
 from models import CreditCard, LifestyleCard, OptimizationResult, categories
 
-
-def _setup_spending_sliders(t: dict, currency_symbol: str) -> Dict[str, int]:
-    """Creates and returns the spending sliders in the sidebar."""
+def _setup_spending_inputs(t: dict, currency_symbol: str) -> Dict[str, int]:
+    """Creates and returns the spending input fields in the sidebar."""
     st.header(f"{t['sidebar_header']} ({currency_symbol})")
     default_spending = {
         "Dining": 1500,
@@ -29,15 +28,18 @@ def _setup_spending_sliders(t: dict, currency_symbol: str) -> Dict[str, int]:
     }
     monthly_spending = {}
     for cat_obj in categories.values():
-        monthly_spending[cat_obj.key] = st.slider(
+        monthly_spending[cat_obj.key] = st.number_input(
             label=t[cat_obj.display_name],
             min_value=0,
-            max_value=15000,
+            max_value=100000,
             value=default_spending.get(cat_obj.key, 0),
             step=50,
-            format=f"{currency_symbol} %d",
+            key=cat_obj.key,
         )
     return monthly_spending
+
+
+
 
 
 def _setup_card_selection(t: dict, cards: List[CreditCard]) -> List[str]:
@@ -55,9 +57,9 @@ def _setup_card_selection(t: dict, cards: List[CreditCard]) -> List[str]:
 def setup_sidebar(
     t: dict, currency_symbol: str, cards: List[CreditCard]
 ) -> Tuple[Dict[str, int], bool, List[str]]:
-    """Sets up the sidebar with sliders for monthly spending."""
+    """Sets up the sidebar with input fields for monthly spending."""
     with st.sidebar:
-        monthly_spending = _setup_spending_sliders(t, currency_symbol)
+        monthly_spending = _setup_spending_inputs(t, currency_symbol)
         st.markdown("---")
         selected_card_names = _setup_card_selection(t, cards)
         st.markdown("---")
