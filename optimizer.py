@@ -1,17 +1,30 @@
+"""
+This module contains the core optimization logic for finding the best credit
+card combination based on user spending. It uses the PuLP library to model
+and solve the linear programming problem.
+"""
+
 from typing import Dict, List, Tuple
 
 import pandas as pd
 from pulp import LpBinary, LpMaximize, LpProblem, LpVariable, lpSum
 
-from models import CardCategory, CreditCard, LifestyleCard, TierCategory, categories
+from models import (
+    CardCategory,
+    CreditCard,
+    LifestyleCard,
+    OptimizationResult,
+    TierCategory,
+    categories,
+)
+
+LARGE_NUMBER = 1_000_000  # A large number for big-M method in LP
 
 
-def _build_optimization_problem(
-    cards: List[CreditCard], monthly_spending: Dict[str, float]
-) -> Tuple[LpProblem, Dict, Dict]:
-    """Builds and returns the PuLP optimization problem."""
-    prob = LpProblem("Unified_Card_Optimizer", LpMaximize)
-
+def _create_variables(
+    cards: List[CreditCard],
+) -> Tuple[Dict, Dict, Dict]:
+    """Creates the decision variables for the optimization problem."""
     spend_vars = LpVariable.dicts(
         "Spend",
         ((c.name, cat.key) for c in cards for cat in categories.values()),
@@ -29,171 +42,194 @@ def _build_optimization_problem(
             "ActivatedBonus", (p.name for p in lifestyle_card.plans), lowBound=0
         )
 
-    # --- Objective Function ---
-    all_cashback_components = []
+    return spend_vars, plan_vars, activated_bonus_vars
 
-    for card in cards:
-        total_spend_on_card = lpSum(
-            spend_vars[card.name, cat.key] for cat in categories.values()
-        )
-        M = 1000000  # A large number
 
-        # Handle Tiered Cashback Cards (like SAIB)
-        if card.tiers:
-            tier_vars = LpVariable.dicts(
-                f"TierChoice_{card.name}", (t.name for t in card.tiers), cat=LpBinary
+def _add_tiered_cashback_logic(prob, card, total_spend_on_card, spend_vars):
+    """Adds the logic for tiered cashback cards to the problem."""
+    components = []
+    tier_vars = LpVariable.dicts(
+        f"TierChoice_{card.name}", (t.name for t in card.tiers), cat=LpBinary
+    )
+    prob += lpSum(tier_vars.values()) == 1, f"ChooseOneTier_{card.name}"
+
+    for tier in card.tiers:
+        y = tier_vars[tier.name]
+        prob += total_spend_on_card >= tier.min_spend - LARGE_NUMBER * (1 - y)
+        if tier.max_spend != float("inf"):
+            prob += total_spend_on_card <= tier.max_spend + LARGE_NUMBER * (1 - y)
+
+        for cat in categories.values():
+            tier_cat = tier.categories.get(
+                cat, TierCategory(rate=tier.base_rate, cap=float("inf"))
             )
-            prob += lpSum(tier_vars.values()) == 1, f"ChooseOneTier_{card.name}"
-
-            for tier in card.tiers:
-                y = tier_vars[tier.name]
-                prob += total_spend_on_card >= tier.min_spend - M * (1 - y)
-                if tier.max_spend != float("inf"):
-                    prob += total_spend_on_card <= tier.max_spend + M * (1 - y)
-
-                for cat in categories.values():
-                    tier_cat_details = tier.categories.get(
-                        cat, TierCategory(rate=tier.base_rate, cap=float("inf"))
-                    )
-                    cashback_for_cat_in_tier = (
-                        spend_vars[card.name, cat.key] * tier_cat_details.rate
-                    )
-                    activated_cat_cashback = LpVariable(
-                        f"Cashback_{card.name}_{tier.name}_{cat.key}", lowBound=0
-                    )
-
-                    prob += activated_cat_cashback <= M * y
-                    prob += activated_cat_cashback <= cashback_for_cat_in_tier
-                    if tier_cat_details.cap != float("inf"):
-                        prob += cashback_for_cat_in_tier <= tier_cat_details.cap + M * (
-                            1 - y
-                        )
-
-                    all_cashback_components.append(activated_cat_cashback)
-
-        # Handle Cards with a Minimum Spend Requirement (like NBD)
-        elif card.min_spend_for_cashback > 0:
-            cashback_active = LpVariable(f"CashbackActive_{card.name}", cat=LpBinary)
-            prob += total_spend_on_card >= card.min_spend_for_cashback - M * (
-                1 - cashback_active
-            )
-            prob += (
-                total_spend_on_card
-                <= (card.min_spend_for_cashback - 0.01) + M * cashback_active
-            )
-
-            card_cashback = lpSum(
-                spend_vars[card.name, cat.key]
-                * card.categories.get(cat, CardCategory(rate=card.base_rate)).rate
-                for cat in categories.values()
-            )
+            cashback = spend_vars[card.name, cat.key] * tier_cat.rate
             activated_cashback = LpVariable(
-                f"ActivatedCashback_{card.name}", lowBound=0
+                f"Cashback_{card.name}_{tier.name}_{cat.key}", lowBound=0
             )
-            prob += activated_cashback <= M * cashback_active
-            prob += activated_cashback <= card_cashback
-            all_cashback_components.append(activated_cashback)
+            prob += activated_cashback <= LARGE_NUMBER * y
+            prob += activated_cashback <= cashback
+            if tier_cat.cap != float("inf"):
+                prob += cashback <= tier_cat.cap + LARGE_NUMBER * (1 - y)
+            components.append(activated_cashback)
+    return components
 
-        # Handle Regular and Lifestyle Cards
-        else:
-            base_cashback = lpSum(
-                spend_vars[card.name, cat.key] * card.base_rate
-                for cat in categories.values()
-            )
-            all_cashback_components.append(base_cashback)
 
-            if not isinstance(card, LifestyleCard):
-                for cat, card_cat in card.categories.items():
-                    bonus = spend_vars[card.name, cat.key] * (
-                        card_cat.rate - card.base_rate
-                    )
-                    all_cashback_components.append(bonus)
-
-    all_cashback_components.append(lpSum(activated_bonus_vars.values()))
-
-    total_monthly_cashback = lpSum(all_cashback_components)
-    total_annual_fees = sum(c.annual_fee for c in cards)
+def _add_min_spend_cashback_logic(prob, card, total_spend_on_card, spend_vars):
+    """Adds the logic for cards with a minimum spend requirement."""
+    cashback_active = LpVariable(f"CashbackActive_{card.name}", cat=LpBinary)
+    prob += total_spend_on_card >= card.min_spend_for_cashback - LARGE_NUMBER * (
+        1 - cashback_active
+    )
     prob += (
-        (total_monthly_cashback * 12) - total_annual_fees,
-        "Total Net Annual Savings",
+        total_spend_on_card
+        <= (card.min_spend_for_cashback - 0.01) + LARGE_NUMBER * cashback_active
     )
 
-    # --- Constraints ---
+    card_cashback = lpSum(
+        spend_vars[card.name, cat.key]
+        * card.categories.get(cat, CardCategory(rate=card.base_rate)).rate
+        for cat in categories.values()
+    )
+    activated_cashback = LpVariable(f"ActivatedCashback_{card.name}", lowBound=0)
+    prob += activated_cashback <= LARGE_NUMBER * cashback_active
+    prob += activated_cashback <= card_cashback
+    return [activated_cashback]
+
+
+def _add_regular_cashback_logic(card, spend_vars):
+    """Adds the logic for regular (non-tiered, non-min-spend) cards."""
+    components = [
+        lpSum(
+            spend_vars[card.name, cat.key] * card.base_rate
+            for cat in categories.values()
+        )
+    ]
+    if not isinstance(card, LifestyleCard):
+        for cat, card_cat in card.categories.items():
+            bonus = spend_vars[card.name, cat.key] * (card_cat.rate - card.base_rate)
+            components.append(bonus)
+    return components
+
+
+def _add_constraints(prob, cards, monthly_spending, spend_vars, plan_vars):
+    """Adds all constraints to the optimization problem."""
+    # Spending must match user's input
     for cat in categories.values():
         prob += (
-            (
-                lpSum(spend_vars[c.name, cat.key] for c in cards)
-                == monthly_spending.get(cat.key, 0)
-            ),
+            lpSum(spend_vars[c.name, cat.key] for c in cards)
+            == monthly_spending.get(cat.key, 0),
             f"Spend_Total_{cat.key}",
         )
 
+    # Card-specific constraints (caps, etc.)
     for card in cards:
         if card.tiers:
-            continue
+            continue  # Tier caps are handled in the tiered logic
 
+        # Monthly cap for non-lifestyle, non-tiered cards
         if not isinstance(card, LifestyleCard) and card.monthly_cap != float("inf"):
-            reg_card_cashback = lpSum(
+            cashback = lpSum(
                 spend_vars[card.name, cat.key]
                 * card.categories.get(cat, CardCategory(rate=card.base_rate)).rate
                 for cat in categories.values()
             )
-            prob += reg_card_cashback <= card.monthly_cap, f"MonthlyCap_{card.name}"
+            prob += cashback <= card.monthly_cap, f"MonthlyCap_{card.name}"
 
+        # Individual category caps
         for cat, card_cat in card.categories.items():
             if card_cat.cap != float("inf"):
                 prob += (
-                    (spend_vars[card.name, cat.key] * card_cat.rate) <= card_cat.cap,
+                    spend_vars[card.name, cat.key] * card_cat.rate <= card_cat.cap,
                     f"CatCap_{card.name}_{cat.key}",
                 )
 
+        # Grouped category caps
         if card.grouped_monthly_caps:
             for i, (cap, cat_list) in enumerate(card.grouped_monthly_caps):
                 prob += (
-                    (
-                        lpSum(
-                            spend_vars[card.name, c.key]
-                            * card.categories.get(
-                                c, CardCategory(rate=card.base_rate)
-                            ).rate
-                            for c in cat_list
-                        )
-                        <= cap
-                    ),
+                    lpSum(
+                        spend_vars[card.name, c.key]
+                        * card.categories.get(c, CardCategory(rate=card.base_rate)).rate
+                        for c in cat_list
+                    )
+                    <= cap,
                     f"GroupCap_{card.name}_{i}",
                 )
 
+    # Lifestyle card plan constraints
+    lifestyle_card = next((c for c in cards if isinstance(c, LifestyleCard)), None)
     if lifestyle_card:
         prob += lpSum(plan_vars.values()) == 1, "Select_One_Lifestyle_Plan"
-        M = 1000000
-
         for plan in lifestyle_card.plans:
-            potential_bonus = lpSum(
-                spend_vars[lifestyle_card.name, category.key]
-                * (card_category.rate - lifestyle_card.base_rate)
-                for category_group in plan.categories_rate_cap
-                for category, card_category in category_group.items()
-            )
-            prob += activated_bonus_vars[plan.name] <= M * plan_vars[plan.name]
-            prob += activated_bonus_vars[plan.name] <= potential_bonus
-            prob += activated_bonus_vars[plan.name] >= potential_bonus - M * (
-                1 - plan_vars[plan.name]
-            )
-
-            for i, category_group in enumerate(plan.categories_rate_cap):
-                cashback_in_group = lpSum(
-                    spend_vars[lifestyle_card.name, cat.key] * card_cat.rate
-                    for cat, card_cat in category_group.items()
-                )
-                cap_value = list(category_group.values())[0].cap
-                if cap_value != float("inf"):
+            for i, group in enumerate(plan.categories_rate_cap):
+                cap = list(group.values())[0].cap
+                if cap != float("inf"):
+                    cashback = lpSum(
+                        spend_vars[lifestyle_card.name, cat.key] * cat_rate.rate
+                        for cat, cat_rate in group.items()
+                    )
                     prob += (
-                        (
-                            cashback_in_group
-                            <= cap_value + M * (1 - plan_vars[plan.name])
-                        ),
+                        cashback <= cap + LARGE_NUMBER * (1 - plan_vars[plan.name]),
                         f"PlanCap_{plan.name}_{i}",
                     )
+
+
+def _build_optimization_problem(
+    cards: List[CreditCard], monthly_spending: Dict[str, float]
+) -> Tuple[LpProblem, Dict, Dict]:
+    """Builds and returns the PuLP optimization problem."""
+    prob = LpProblem("Unified_Card_Optimizer", LpMaximize)
+    spend_vars, plan_vars, activated_bonus_vars = _create_variables(cards)
+
+    # --- Objective Function ---
+    all_cashback = []
+    for card in cards:
+        total_spend = lpSum(
+            spend_vars[card.name, cat.key] for cat in categories.values()
+        )
+        if card.tiers:
+            all_cashback.extend(
+                _add_tiered_cashback_logic(prob, card, total_spend, spend_vars)
+            )
+        elif card.min_spend_for_cashback > 0:
+            all_cashback.extend(
+                _add_min_spend_cashback_logic(prob, card, total_spend, spend_vars)
+            )
+        else:
+            all_cashback.extend(_add_regular_cashback_logic(card, spend_vars))
+
+    # Add lifestyle bonus to objective
+    all_cashback.append(lpSum(activated_bonus_vars.values()))
+
+    # Final objective function: Net Annual Savings
+    total_monthly_cashback = lpSum(all_cashback)
+    total_annual_fees = sum(c.annual_fee for c in cards)
+    prob += (
+        (total_monthly_cashback * 12) - total_annual_fees,
+        "Total_Net_Annual_Savings",
+    )
+
+    # --- Constraints ---
+    _add_constraints(prob, cards, monthly_spending, spend_vars, plan_vars)
+
+    # Link lifestyle bonus to objective
+    lifestyle_card = next((c for c in cards if isinstance(c, LifestyleCard)), None)
+    if lifestyle_card:
+        for plan in lifestyle_card.plans:
+            potential_bonus = lpSum(
+                spend_vars[lifestyle_card.name, cat.key]
+                * (card_cat.rate - lifestyle_card.base_rate)
+                for group in plan.categories_rate_cap
+                for cat, card_cat in group.items()
+            )
+            prob += (
+                activated_bonus_vars[plan.name] <= LARGE_NUMBER * plan_vars[plan.name]
+            )
+            prob += activated_bonus_vars[plan.name] <= potential_bonus
+            prob += activated_bonus_vars[
+                plan.name
+            ] >= potential_bonus - LARGE_NUMBER * (1 - plan_vars[plan.name])
 
     return prob, spend_vars, plan_vars
 
@@ -203,7 +239,7 @@ def _process_optimization_results(
     cards: List[CreditCard],
     spend_vars: Dict,
     plan_vars: Dict,
-) -> Tuple[pd.DataFrame, float, str]:
+) -> OptimizationResult | None:
     """Processes the solved PuLP problem and returns the results."""
     results = [
         {
@@ -222,18 +258,24 @@ def _process_optimization_results(
         chosen_plan_name = next(
             (p_name for p_name, var in plan_vars.items() if var.varValue > 0.9), ""
         )
-
-    return pd.DataFrame(results), prob.objective.value(), chosen_plan_name
+    if prob.objective is None:
+        return None
+    objective_value = prob.objective.value()
+    return OptimizationResult(
+        results_df=pd.DataFrame(results),
+        total_savings=float(objective_value),
+        chosen_plan=chosen_plan_name,
+    )
 
 
 def solve_optimization(
     cards: List[CreditCard], monthly_spending: Dict[str, float]
-) -> Tuple[pd.DataFrame, float, str]:
+) -> OptimizationResult | None:
     """Top-level function to solve the credit card optimization problem."""
     prob, spend_vars, plan_vars = _build_optimization_problem(cards, monthly_spending)
     prob.solve()
 
-    if prob.status != 1:
-        return None, None, None
+    if prob.status != 1:  # 1 means "Optimal"
+        return None
 
     return _process_optimization_results(prob, cards, spend_vars, plan_vars)

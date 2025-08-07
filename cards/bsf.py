@@ -82,12 +82,18 @@ def generate_life_style_plans() -> list[LifestylePlan]:
 
         # Create a more descriptive name
         major_cat_names = (
-            f"{major_categories[0].display_name}, {major_categories[1].display_name}"
+            f"{major_categories[0].display_name}, "
+            f"{major_categories[1].display_name}"
         )
         minor_cat_names = (
-            f"{minor_categories[0].display_name}, {minor_categories[1].display_name}"
+            f"{minor_categories[0].display_name}, "
+            f"{minor_categories[1].display_name}"
         )
-        plan_name = f"10% on {main_category.display_name}; 3% on {major_cat_names}; 2% on {minor_cat_names}"
+        plan_name = (
+            f"10% on {main_category.display_name}; "
+            f"3% on {major_cat_names}; "
+            f"2% on {minor_cat_names}"
+        )
 
         lifestyle_plans.append(
             LifestylePlan(
@@ -109,7 +115,10 @@ def get_lifestyle_card() -> LifestyleCard:
 
     return LifestyleCard(
         name="BSF Lifestyle",
-        reference_link="https://bsf.sa/english/personal/cards/credit/lifestyle-credit-card/lifestyle",
+        reference_link=(
+            "https://bsf.sa/english/personal/cards/credit/lifestyle-credit-card/"
+            "lifestyle"
+        ),
         annual_fee=0,
         base_rate=0.005,
         plans=lifestyle_plans,

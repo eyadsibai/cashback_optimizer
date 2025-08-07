@@ -1,3 +1,10 @@
+"""
+Main script for the Credit Card Optimizer Streamlit application.
+
+This script sets up the user interface, handles user input, and
+calls the optimization logic to find the best credit card combination.
+"""
+
 import streamlit as st
 
 from cards.alrajhi import get_alrajhi_card
@@ -32,8 +39,9 @@ def main():
     # It targets the text span inside the multiselect component in the sidebar.
     st.markdown(
         """<style>
-    div[data-testid="stSidebar"] div[data-baseweb="select"] div[role="listbox"] div[data-baseweb="tag"] > span {
-        font-size: 6px !important;  /* <<< CHANGE THIS VALUE TO ADJUST FONT SIZE */
+    div[data-testid="stSidebar"] div[data-baseweb="select"] 
+    div[role="listbox"] div[data-baseweb="tag"] > span {
+        font-size: 6px !important;
     }
 
     /* --- Language Specific Styles --- */
@@ -77,20 +85,16 @@ def main():
         else:
             with st.spinner(t["spinner_text"]):
                 selected_cards = [
-                    card
-                    for card in all_cards
-                    if card.name in selected_card_names
+                    card for card in all_cards if card.name in selected_card_names
                 ]
-                results_df, total_savings, chosen_plan = solve_optimization(
-                    selected_cards, monthly_spending
+                optimization_result = solve_optimization(
+                    selected_cards, {k: float(v) for k, v in monthly_spending.items()}
                 )
-            if results_df is None:
+            if optimization_result is None:
                 st.error(t["error_no_solution"])
             else:
                 display_results(
-                    results_df,
-                    total_savings,
-                    chosen_plan,
+                    optimization_result,
                     selected_cards,
                     t,
                     currency_symbol,

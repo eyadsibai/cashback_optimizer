@@ -1,5 +1,6 @@
 """
 This module provides the configuration for the SAIB Bank."""
+# pylint: disable=duplicate-code
 
 from models import CashbackTier, CreditCard, TierCategory, categories
 

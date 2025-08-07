@@ -1,3 +1,9 @@
+"""
+This module contains all UI translations for the Credit Card Optimizer application.
+It provides translations in English and Arabic for all user interface elements.
+"""
+# pylint: disable=line-too-long
+
 # Dictionary for all UI translations with currency symbols
 TRANSLATIONS = {
     "en": {

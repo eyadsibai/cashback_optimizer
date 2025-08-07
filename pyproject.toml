@@ -10,6 +10,7 @@ dependencies = [
     "plotly>=6.2.0",
     "plotly-express>=0.4.1",
     "pulp>=3.2.1",
+    "pylint>=3.3.7",
     "pytest>=8.4.1",
     "streamlit>=1.47.1",
     "watchdog>=6.0.0",

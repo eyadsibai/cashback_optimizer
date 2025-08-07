@@ -1,5 +1,6 @@
 """
 This module provides the configuration for the SAIB Bank."""
+# pylint: disable=duplicate-code
 
 from models import CashbackTier, CreditCard, TierCategory, categories
 
@@ -36,9 +37,10 @@ def get_sabb_card() -> CreditCard:
             max_spend=14999,
             base_rate=0.001,
             categories={
-                 categories["grocery"]: TierCategory(rate=0.05, cap=100),
+                categories["grocery"]: TierCategory(rate=0.05, cap=100),
                 categories["dining"]: TierCategory(rate=0.05, cap=200),
-                categories["gas_station"]: TierCategory(rate=0.05, cap=100), },
+                categories["gas_station"]: TierCategory(rate=0.05, cap=100),
+            },
         ),
         CashbackTier(
             name="Tier 4 (15K+)",
@@ -46,7 +48,7 @@ def get_sabb_card() -> CreditCard:
             max_spend=float("inf"),
             base_rate=0.001,
             categories={
-              categories["grocery"]: TierCategory(rate=0.1, cap=100),
+                categories["grocery"]: TierCategory(rate=0.1, cap=100),
                 categories["dining"]: TierCategory(rate=0.1, cap=200),
                 categories["gas_station"]: TierCategory(rate=0.1, cap=100),
             },
@@ -55,8 +57,11 @@ def get_sabb_card() -> CreditCard:
 
     return CreditCard(
         name="SABB Cashback",
-        reference_link="https://www.sab.com/en/personal/compare-credit-cards/cashback-visa-credit-card/",
+        reference_link=(
+            "https://www.sab.com/en/personal/compare-credit-cards/"
+            "cashback-visa-credit-card/"
+        ),
         annual_fee=0,
         tiers=sabb_tiers,
-        min_spend_for_cashback=1999
+        min_spend_for_cashback=1999,
     )

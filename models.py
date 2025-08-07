@@ -3,6 +3,7 @@ This module defines the data models for credit card cashback categories and tier
 
 from dataclasses import dataclass, field
 from typing import Dict, List
+import pandas as pd
 
 
 @dataclass(frozen=True)
@@ -42,7 +43,7 @@ class CashbackTier:
 
 
 @dataclass
-class CreditCard:
+class CreditCard:  # pylint: disable=too-many-instance-attributes
     """Represents a standard credit card."""
 
     name: str
@@ -72,6 +73,15 @@ class LifestyleCard(CreditCard):
     """Represents the special Lifestyle card with selectable plans."""
 
     plans: List[LifestylePlan] = field(default_factory=list)
+
+
+@dataclass
+class OptimizationResult:
+    """Holds the results of the optimization."""
+
+    results_df: pd.DataFrame
+    total_savings: float
+    chosen_plan: str
 
 
 categories = {

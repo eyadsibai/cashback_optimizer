@@ -12,7 +12,10 @@ def get_nbd_card() -> CreditCard:
     """Return NBD Cashback credit card configuration."""
     return CreditCard(
         name="Mazeed Platinum Cashback",
-        reference_link="https://www.emiratesnbd.com.sa/en/cards/credit-cards/mazeed-platinum-credit-card",
+        reference_link=(
+            "https://www.emiratesnbd.com.sa/en/cards/credit-cards/"
+            "mazeed-platinum-credit-card"
+        ),
         annual_fee=200,
         min_spend_for_cashback=1000,  # Minimum spend to unlock cashback
         categories={
