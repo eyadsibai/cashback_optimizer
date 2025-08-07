@@ -11,6 +11,7 @@ import streamlit as st
 
 from models import CreditCard, LifestyleCard, OptimizationResult, categories
 
+
 def _setup_spending_inputs(t: dict, currency_symbol: str) -> Dict[str, int]:
     """Creates and returns the spending input fields in the sidebar."""
     st.header(f"{t['sidebar_header']} ({currency_symbol})")
@@ -37,9 +38,6 @@ def _setup_spending_inputs(t: dict, currency_symbol: str) -> Dict[str, int]:
             key=cat_obj.key,
         )
     return monthly_spending
-
-
-
 
 
 def _setup_card_selection(t: dict, cards: List[CreditCard]) -> List[str]:
@@ -155,7 +153,7 @@ def generate_priority_guide(
             sorted_group = pd.DataFrame(group).sort_values("Rate", ascending=False)
             for i, (_, row) in enumerate(sorted_group.iterrows()):
                 guide.append(
-                    f"  {i+1}. {t['priority_use']} **{row['Card']}** "
+                    f"  {i + 1}. {t['priority_use']} **{row['Card']}** "
                     f"({t['priority_at']} {row['Rate']:.1%}) "
                     f"{t['priority_for_first']} **{currency} {row['Amount']:,.2f}**."
                 )
