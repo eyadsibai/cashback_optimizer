@@ -7,7 +7,7 @@ and solve the linear programming problem.
 from typing import Dict, List, Tuple
 
 import pandas as pd
-from pulp import LpBinary, LpMaximize, LpProblem, LpVariable, lpSum
+from pulp import LpBinary, LpMaximize, LpProblem, LpVariable, lpSum  # type: ignore
 
 from models import (
     CardCategory,
@@ -261,6 +261,8 @@ def _process_optimization_results(
     if prob.objective is None:
         return None
     objective_value = prob.objective.value()
+    if objective_value is None:
+        return None
     return OptimizationResult(
         results_df=pd.DataFrame(results),
         total_savings=float(objective_value),

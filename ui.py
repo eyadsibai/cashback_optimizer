@@ -5,6 +5,7 @@ including the sidebar setup, results display, and chart generation.
 
 from typing import Dict, List, Tuple
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -101,9 +102,13 @@ def _get_spending_details(
     )
 
     details = []
-    for _, row in results_df.iterrows():
-        card = next((c for c in cards if c.name == row["Card"]), None)
-        cat = category_map.get(row["Category"])
+    for i in range(len(results_df)):
+        card_name = str(results_df.iloc[i]["Card"])
+        category_key = str(results_df.iloc[i]["Category"])
+        amount = float(results_df.iloc[i]["Amount"])
+
+        card = next((c for c in cards if c.name == card_name), None)
+        cat = category_map.get(category_key)
         if not (card and cat):
             continue
 
@@ -122,7 +127,7 @@ def _get_spending_details(
             {
                 "Category": cat.key,
                 "Card": card.name,
-                "Amount": row["Amount"],
+                "Amount": amount,
                 "Rate": rate,
             }
         )
@@ -148,7 +153,11 @@ def generate_priority_guide(
     for cat_key, group in df_details.groupby("Category"):
         if len(group) > 1:
             has_priorities = True
-            display_name = t.get(cat_map[cat_key].display_name, cat_key)
+            cat_key_str = str(cat_key)
+            if cat_key_str in cat_map:
+                display_name = t.get(cat_map[cat_key_str].display_name, cat_key_str)
+            else:
+                display_name = cat_key_str
             guide.append(f"- **{display_name}:**")
             sorted_group = pd.DataFrame(group).sort_values("Rate", ascending=False)
             for i, (_, row) in enumerate(sorted_group.iterrows()):
@@ -178,8 +187,8 @@ def display_charts(results_df: pd.DataFrame, t: dict, currency_symbol: str):
             "Card": monthly_spending.index,
             "Monthly Spending": monthly_spending.values,
             "Monthly Cashback": monthly_cashback.values,
-            "Yearly Spending": monthly_spending.values.to_numpy() * 12,
-            "Yearly Cashback": monthly_cashback.values.to_numpy() * 12,
+            "Yearly Spending": np.array(monthly_spending.values) * 12,
+            "Yearly Cashback": np.array(monthly_cashback.values) * 12,
         }
     )
 
