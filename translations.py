@@ -52,7 +52,7 @@ TRANSLATIONS = {
         "Education": "Education",
         "Medical Care": "Medical Care",
         "Online Shopping (Local)": "Online Shopping (Local)",
-        "International Spend (Non-EUR)": "International Spend (Non-EUR)",
+        "International Spend": "International Spend",
         "Other Local Spend": "Other Local Spend",
     },
     "ar": {
@@ -101,7 +101,7 @@ TRANSLATIONS = {
         "Education": "تعليم",
         "Medical Care": "رعاية طبية",
         "Online Shopping (Local)": "تسوق أونلاين (محلي)",
-        "International Spend (Non-EUR)": "إنفاق دولي (غير اليورو)",
+        "International Spend": "إنفاق دولي",
         "Other Local Spend": "مصاريف محلية أخرى",
     },
 }
