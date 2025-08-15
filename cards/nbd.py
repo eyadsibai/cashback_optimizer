@@ -16,7 +16,7 @@ def get_nbd_card() -> CreditCard:
             "https://www.emiratesnbd.com.sa/en/cards/credit-cards/"
             "mazeed-platinum-credit-card"
         ),
-        annual_fee=200,
+        annual_fee=230,
         min_spend_for_cashback=1000,  # Minimum spend to unlock cashback
         categories={
             categories["dining"]: CardCategory(rate=0.10, cap=200),
@@ -24,6 +24,18 @@ def get_nbd_card() -> CreditCard:
             categories["grocery"]: CardCategory(rate=0.05, cap=200),
             categories["education"]: CardCategory(rate=0.05, cap=200),
             categories["medical_care"]: CardCategory(rate=0.05, cap=200),
+            categories["pharmacy"]: CardCategory(rate=0.05, cap=200),
         },
+        grouped_monthly_caps=[
+            (
+                200,
+                [
+                    categories["medical_care"],
+                    categories["pharmacy"],
+                ],
+
+            )
+        ],
         base_rate=0.005,
+        annual_cap=1000
     )

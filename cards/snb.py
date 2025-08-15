@@ -19,13 +19,14 @@ def get_snb_card() -> CreditCard:
             "https://www.alahli.com/en/pages/personal-banking/credit-cards/"
             "alahli-cashback-premium-credit-card"
         ),
-        annual_fee=200,
+        annual_fee=230,
         categories={
             categories["gas_station"]: CardCategory(rate=0.11, cap=100),
             categories["dining"]: CardCategory(rate=0.05, cap=200),
             categories["grocery"]: CardCategory(rate=0.05, cap=200),
             categories["pharmacy"]: CardCategory(rate=0.05, cap=200),
-            categories["international_spend_non_eur"]: CardCategory(rate=0.02),
+            categories["international_spend"]: CardCategory(rate=0.02),
         },
         base_rate=0.007,
+        annual_cap=700
     )

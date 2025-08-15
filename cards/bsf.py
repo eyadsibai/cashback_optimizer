@@ -13,7 +13,7 @@ lifestyle_base_categories = [
     categories["education"],
 ]
 
-
+# TODO Fix cost 287.5 if not spending more than 20k
 def generate_plans(list_of_categories: list) -> list:
     """
     Generates all possible plans from a list of categories.
@@ -117,7 +117,10 @@ def get_lifestyle_card() -> LifestyleCard:
             "https://bsf.sa/english/personal/cards/credit/lifestyle-credit-card/"
             "lifestyle"
         ),
-        annual_fee=0,
         base_rate=0.005,
+        annual_fee=0, # the fee if it is waived
         plans=lifestyle_plans,
+        annual_fee_if_condition_not_met=287.5,  # Annual fee if not waived
+        # The condition to waive the annual fee
+        minimum_annual_spend_for_fee_waiver=20000
     )

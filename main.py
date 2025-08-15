@@ -9,6 +9,7 @@ import streamlit as st
 
 from cards.alrajhi import get_alrajhi_card
 from cards.bsf import get_lifestyle_card
+from cards.nayfat import get_nayfat_card
 from cards.nbd import get_nbd_card
 from cards.sabb import get_sabb_card
 from cards.saib import get_saib_card
@@ -21,6 +22,8 @@ from ui import display_results, setup_sidebar
 def main():
     """Main function to run the Streamlit application."""
     st.set_page_config(layout="wide", page_title="Credit Card Optimizer 💳")
+
+
 
     if "lang" not in st.session_state:
         st.session_state.lang = "en"
@@ -39,7 +42,7 @@ def main():
     # It targets the text span inside the multiselect component in the sidebar.
     st.markdown(
         """<style>
-    div[data-testid="stSidebar"] div[data-baseweb="select"] 
+    div[data-testid="stSidebar"] div[data-baseweb="select"]
     div[role="listbox"] div[data-baseweb="tag"] > span {
         font-size: 6px !important;
     }
@@ -72,6 +75,7 @@ def main():
         get_lifestyle_card(),
         get_saib_card(),
         get_sabb_card(),
+        get_nayfat_card()
     ]
     currency_symbol = t["currency_symbol"]
 

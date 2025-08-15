@@ -1,8 +1,6 @@
-"""
-This module defines the data models for credit card cashback categories and tiers."""
-
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Optional
+
 import pandas as pd
 
 
@@ -52,6 +50,8 @@ class CreditCard:  # pylint: disable=too-many-instance-attributes
     monthly_cap: float = float("inf")
     annual_cap: float = float("inf")
     min_spend_for_cashback: float = 0.0  # New attribute for minimum spend
+    minimum_annual_spend_for_fee_waiver: Optional[float] = None
+    annual_fee_if_condition_not_met: Optional[float] = None
     grouped_monthly_caps: List[tuple[float, List[Category]]] = field(
         default_factory=list
     )
@@ -95,9 +95,9 @@ categories = {
     "online_shopping_local": Category(
         key="Online Shopping (Local)", display_name="Online Shopping (Local)"
     ),
-    "international_spend_non_eur": Category(
-        key="International Spend (Non-EUR)",
-        display_name="International Spend (Non-EUR)",
+    "international_spend": Category(
+        key="International Spend",
+        display_name="International Spend",
     ),
     "other_local_spend": Category(
         key="Other Local Spend", display_name="Other Local Spend"

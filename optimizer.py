@@ -1,9 +1,3 @@
-"""
-This module contains the core optimization logic for finding the best credit
-card combination based on user spending. It uses the PuLP library to model
-and solve the linear programming problem.
-"""
-
 from typing import Dict, List, Tuple
 
 import pandas as pd
@@ -202,11 +196,25 @@ def _build_optimization_problem(
     # Add lifestyle bonus to objective
     all_cashback.append(lpSum(activated_bonus_vars.values()))
 
+    # Calculate total annual fees with new conditional logic
+    total_annual_fees = []
+    for card in cards:
+        if card.minimum_annual_spend_for_fee_waiver is not None and card.minimum_annual_spend_for_fee_waiver > 0:
+            fee_is_waived = LpVariable(f"FeeWaived_{card.name}", cat=LpBinary)
+            annual_spend_on_card = lpSum(
+                spend_vars[card.name, cat.key] for cat in categories.values()
+            ) * 12
+            prob += annual_spend_on_card >= card.minimum_annual_spend_for_fee_waiver - LARGE_NUMBER * (1 - fee_is_waived), f"Waived_Spend_Constraint_1_{card.name}"
+            prob += annual_spend_on_card <= card.minimum_annual_spend_for_fee_waiver - 0.01 + LARGE_NUMBER * fee_is_waived, f"Waived_Spend_Constraint_2_{card.name}"
+            annual_fee_to_pay = (fee_is_waived * card.annual_fee) + ((1 - fee_is_waived) * card.annual_fee_if_condition_not_met)
+            total_annual_fees.append(annual_fee_to_pay)
+        else:
+            total_annual_fees.append(card.annual_fee)
+
     # Final objective function: Net Annual Savings
     total_monthly_cashback = lpSum(all_cashback)
-    total_annual_fees = sum(c.annual_fee for c in cards)
     prob += (
-        (total_monthly_cashback * 12) - total_annual_fees,
+        (total_monthly_cashback * 12) - lpSum(total_annual_fees),
         "Total_Net_Annual_Savings",
     )
 
