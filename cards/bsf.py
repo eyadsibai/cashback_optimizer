@@ -13,7 +13,6 @@ lifestyle_base_categories = [
     categories["education"],
 ]
 
-# TODO Fix cost 287.5 if not spending more than 20k
 def generate_plans(list_of_categories: list) -> list:
     """
     Generates all possible plans from a list of categories.
