@@ -1,0 +1,68 @@
+.App {
+  text-align: center;
+}
+
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+  margin-bottom: 2rem;
+}
+
+.container {
+  display: flex;
+  flex-direction: row;
+  padding: 0 2rem;
+}
+
+.sidebar {
+  width: 300px;
+  padding-right: 2rem;
+  border-right: 1px solid #ddd;
+}
+
+.sidebar div {
+  margin-bottom: 1rem;
+}
+
+.sidebar label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.sidebar input[type="number"], .sidebar input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+.sidebar button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+  background-color: #61dafb;
+  border: none;
+  border-radius: 5px;
+}
+
+.content {
+  flex-grow: 1;
+  padding-left: 2rem;
+}
+
+.error {
+  color: red;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+th {
+  background-color: #f2f2f2;
+}
