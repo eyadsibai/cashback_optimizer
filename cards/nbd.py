@@ -37,5 +37,4 @@ def get_nbd_card() -> CreditCard:
             )
         ],
         base_rate=0.005,
-        annual_cap=1000
     )
