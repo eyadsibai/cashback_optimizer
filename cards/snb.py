@@ -28,5 +28,5 @@ def get_snb_card() -> CreditCard:
             categories["international_spend"]: CardCategory(rate=0.02),
         },
         base_rate=0.007,
-        annual_cap=700
+        monthly_cap=700
     )
