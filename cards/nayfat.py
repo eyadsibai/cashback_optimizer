@@ -28,5 +28,5 @@ def get_nayfat_card() -> CreditCard:
             categories["travel_hotels"]: CardCategory(rate=0.015),
         },
         base_rate=0.007,
-        annual_cap=500
+        monthly_cap=500
     )
