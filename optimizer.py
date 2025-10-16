@@ -149,7 +149,8 @@ def _add_regular_cashback_logic(card, spend_vars):
 
 
 def _add_total_spend_constraints(prob, cards, monthly_spending, spend_vars):
-    """Balance total spend per category to match the provided monthly amounts.
+    """Ensure per-category spend matches the provided monthly_spending totals.
+    Balance total spend per category to match the provided monthly amounts.
 
     Each constraint enforces that the sum of spending across all cards equals the
     requested monthly spending for that category (defaulting to 0 when the
@@ -167,6 +168,7 @@ def _add_total_spend_constraints(prob, cards, monthly_spending, spend_vars):
 def _add_card_constraints(
     prob, card, total_monthly_spend, spend_vars, card_active_var
 ):
+    """Apply monthly, per-category, and grouped cashback caps (cashback units) gated by activation."""
     total_spend_on_card = lpSum(
         spend_vars[card.name, cat.key] for cat in ALL_CATEGORIES
     )
@@ -216,7 +218,13 @@ def _add_lifestyle_plan_constraints(
         plan_var = plan_vars[plan.name]
         prob += plan_var <= card_active_var
         for i, group in enumerate(plan.categories_rate_cap):
-            cap = next(iter(group.values())).cap
+            finite_caps = {card_cat.cap for card_cat in group.values() if card_cat.cap != float("inf")}
+            if len(finite_caps) > 1:
+                raise ValueError(
+                    "Inconsistent caps within a lifestyle plan group: "
+                    f"{finite_caps}"
+                )
+            cap = finite_caps.pop() if finite_caps else float("inf")
             if cap != float("inf"):
                 cashback = lpSum(
                     spend_vars[lifestyle_card.name, cat.key] * cat_rate.rate
