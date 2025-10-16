@@ -168,7 +168,13 @@ def _add_total_spend_constraints(prob, cards, monthly_spending, spend_vars):
 def _add_card_constraints(
     prob, card, total_monthly_spend, spend_vars, card_active_var
 ):
-    """Apply monthly, per-category, and grouped cashback caps (cashback units) gated by activation."""
+    """Add per-card spend limit and cashback cap constraints.
+
+    The TotalSpendLimit ensures all spending is gated by ``card_active_var``.
+    Monthly caps, category caps, and grouped caps are expressed in cashback
+    units and are also multiplied by ``card_active_var`` so they only apply when
+    the card is active.
+    """
     total_spend_on_card = lpSum(
         spend_vars[card.name, cat.key] for cat in ALL_CATEGORIES
     )
@@ -177,6 +183,8 @@ def _add_card_constraints(
         f"TotalSpendLimit_{card.name}",
     )
 
+    # Tiered cards manage their own cashback caps inside the tier logic above.
+    # Only the flat cap logic below is skipped for those cards.
     if not card.tiers:
         if (
             not isinstance(card, LifestyleCard)
@@ -218,13 +226,14 @@ def _add_lifestyle_plan_constraints(
         plan_var = plan_vars[plan.name]
         prob += plan_var <= card_active_var
         for i, group in enumerate(plan.categories_rate_cap):
-            finite_caps = {card_cat.cap for card_cat in group.values() if card_cat.cap != float("inf")}
-            if len(finite_caps) > 1:
+            caps = {cat_rate.cap for cat_rate in group.values()}
+            if len(caps) > 1:
+                category_keys = [cat.key for cat in group.keys()]
                 raise ValueError(
-                    "Inconsistent caps within a lifestyle plan group: "
-                    f"{finite_caps}"
+                    f"Grouped lifestyle categories must share a single cap value: "
+                    f"Plan '{plan.name}', group {i}, caps found: {caps}, categories: {category_keys}"
                 )
-            cap = finite_caps.pop() if finite_caps else float("inf")
+            cap = caps.pop()
             if cap != float("inf"):
                 cashback = lpSum(
                     spend_vars[lifestyle_card.name, cat.key] * cat_rate.rate
