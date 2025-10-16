@@ -101,26 +101,37 @@ def _add_tiered_cashback_logic(
     return components
 
 
-def _add_min_spend_cashback_logic(
-    prob, card, total_spend_on_card, spend_vars, card_active_var
+def _gate_cashback_by_min_spend(
+    prob,
+    card,
+    total_spend_on_card,
+    card_active_var,
+    cashback_components,
 ):
-    """Adds the logic for cards with a minimum spend requirement."""
+    """Wrap cashback components so they only pay out when the spend minimum is met."""
+
     cashback_active = LpVariable(f"CashbackActive_{card.name}", cat=LpBinary)
     prob += cashback_active <= card_active_var
-    prob += total_spend_on_card >= card.min_spend_for_cashback - LARGE_NUMBER * (
-        1 - cashback_active + (1 - card_active_var)
-    )
+
+    min_spend = card.min_spend_for_cashback
+    prob += total_spend_on_card >= min_spend - LARGE_NUMBER * (1 - cashback_active)
     prob += (
         total_spend_on_card
-        <= (card.min_spend_for_cashback - 0.01)
+        <= (min_spend - 0.01)
         + LARGE_NUMBER * (cashback_active + (1 - card_active_var))
     )
 
-    card_cashback = _card_cashback_value(card, spend_vars)
-    activated_cashback = LpVariable(f"ActivatedCashback_{card.name}", lowBound=0)
-    prob += activated_cashback <= LARGE_NUMBER * cashback_active
-    prob += activated_cashback <= card_cashback
-    return [activated_cashback]
+    gated_components = []
+    for index, component in enumerate(cashback_components):
+        activated_cashback = LpVariable(
+            f"ActivatedCashback_{card.name}_{index}", lowBound=0
+        )
+        prob += activated_cashback <= LARGE_NUMBER * cashback_active
+        prob += activated_cashback <= component
+        prob += activated_cashback >= component - LARGE_NUMBER * (1 - cashback_active)
+        gated_components.append(activated_cashback)
+
+    return gated_components
 
 
 def _add_regular_cashback_logic(card, spend_vars):
@@ -253,24 +264,24 @@ def _build_optimization_problem(
         total_spend = lpSum(
             spend_vars[card.name, cat.key] for cat in categories.values()
         )
+        cashback_components: List[LpAffineExpression] = []
         if card.tiers:
-            all_cashback.extend(
-                _add_tiered_cashback_logic(
-                    prob, card, total_spend, spend_vars, card_active_vars[card.name]
-                )
-            )
-        elif card.min_spend_for_cashback > 0:
-            all_cashback.extend(
-                _add_min_spend_cashback_logic(
-                    prob,
-                    card,
-                    total_spend,
-                    spend_vars,
-                    card_active_vars[card.name],
-                )
+            cashback_components = _add_tiered_cashback_logic(
+                prob, card, total_spend, spend_vars, card_active_vars[card.name]
             )
         else:
-            all_cashback.extend(_add_regular_cashback_logic(card, spend_vars))
+            cashback_components = _add_regular_cashback_logic(card, spend_vars)
+
+        if card.min_spend_for_cashback > 0:
+            cashback_components = _gate_cashback_by_min_spend(
+                prob,
+                card,
+                total_spend,
+                card_active_vars[card.name],
+                cashback_components,
+            )
+
+        all_cashback.extend(cashback_components)
 
     # Add lifestyle bonus to objective
     all_cashback.append(lpSum(activated_bonus_vars.values()))

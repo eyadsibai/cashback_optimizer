@@ -102,6 +102,57 @@ def test_tiered_card_cannot_earn_without_activation():
     assert result.total_savings == pytest.approx(baseline_only.total_savings)
 
 
+def test_tiered_card_respects_minimum_spend_requirement():
+    baseline_card = CreditCard(
+        name="Baseline", reference_link="", annual_fee=0.0, base_rate=0.01
+    )
+    tiered_card = CreditCard(
+        name="TieredThreshold",
+        reference_link="",
+        annual_fee=0.0,
+        base_rate=0.0,
+        min_spend_for_cashback=500.0,
+        tiers=[
+            CashbackTier(
+                name="FlatBonus",
+                min_spend=0.0,
+                max_spend=float("inf"),
+                categories={
+                    categories["dining"]: TierCategory(rate=0.05),
+                },
+                base_rate=0.0,
+            )
+        ],
+    )
+
+    low_spend = _monthly_spend({"dining": 300.0})
+    low_result = solve_optimization([baseline_card, tiered_card], low_spend)
+
+    assert low_result is not None
+    assert _extract_card_spend(low_result.results_df, "TieredThreshold") == pytest.approx(0.0)
+    assert _extract_card_spend(low_result.results_df, "Baseline") == pytest.approx(300.0)
+
+    baseline_only_low = solve_optimization([baseline_card], low_spend)
+    assert baseline_only_low is not None
+    assert low_result.total_savings == pytest.approx(baseline_only_low.total_savings)
+
+    qualifying_spend = _monthly_spend({"dining": 600.0})
+    qualifying_result = solve_optimization(
+        [baseline_card, tiered_card], qualifying_spend
+    )
+
+    assert qualifying_result is not None
+    assert _extract_card_spend(
+        qualifying_result.results_df, "TieredThreshold"
+    ) == pytest.approx(600.0)
+    assert _extract_card_spend(
+        qualifying_result.results_df, "Baseline"
+    ) == pytest.approx(0.0)
+
+    expected_savings = 600.0 * 0.05 * 12
+    assert qualifying_result.total_savings == pytest.approx(expected_savings)
+
+
 def test_minimum_spend_card_gets_deactivated_when_requirement_unmet():
     baseline_card = CreditCard(
         name="Baseline",
