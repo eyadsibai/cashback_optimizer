@@ -61,6 +61,47 @@ def test_dropping_fee_heavy_card_matches_removing_it():
     assert _extract_card_spend(with_fee_result.results_df, "FeeTrap") == pytest.approx(0.0)
 
 
+def test_tiered_card_cannot_earn_without_activation():
+    baseline_card = CreditCard(
+        name="Baseline",
+        reference_link="",
+        annual_fee=0.0,
+        base_rate=0.02,
+    )
+    tiered_card = CreditCard(
+        name="TieredWindfall",
+        reference_link="",
+        annual_fee=500.0,
+        base_rate=0.01,
+        tiers=[
+            CashbackTier(
+                name="Bonus",
+                min_spend=0.0,
+                max_spend=float("inf"),
+                categories={
+                    categories["dining"]: TierCategory(rate=0.05),
+                },
+                base_rate=0.01,
+            )
+        ],
+    )
+
+    monthly_spend = _monthly_spend({"dining": 800.0})
+
+    result = solve_optimization([baseline_card, tiered_card], monthly_spend)
+    assert result is not None
+
+    tiered_spend = _extract_card_spend(result.results_df, "TieredWindfall")
+    baseline_spend = _extract_card_spend(result.results_df, "Baseline")
+
+    assert tiered_spend == pytest.approx(0.0)
+    assert baseline_spend == pytest.approx(800.0)
+
+    baseline_only = solve_optimization([baseline_card], monthly_spend)
+    assert baseline_only is not None
+    assert result.total_savings == pytest.approx(baseline_only.total_savings)
+
+
 def test_minimum_spend_card_gets_deactivated_when_requirement_unmet():
     baseline_card = CreditCard(
         name="Baseline",

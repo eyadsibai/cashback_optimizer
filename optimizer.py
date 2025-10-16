@@ -157,33 +157,34 @@ def _add_card_constraints(
         f"TotalSpendLimit_{card.name}",
     )
 
-    if card.tiers:
-        return  # Tier caps are handled in the tiered logic
-
-    if not isinstance(card, LifestyleCard) and card.monthly_cap != float("inf"):
-        cashback = _card_cashback_value(card, spend_vars)
-        prob += (
-            cashback <= card.monthly_cap * card_active_var,
-            f"MonthlyCap_{card.name}",
-        )
-
-    for cat, card_cat in card.categories.items():
-        if card_cat.cap != float("inf"):
+    if not card.tiers:
+        if (
+            not isinstance(card, LifestyleCard)
+            and card.monthly_cap != float("inf")
+        ):
+            cashback = _card_cashback_value(card, spend_vars)
             prob += (
-                spend_vars[card.name, cat.key] * card_cat.rate
-                <= card_cat.cap * card_active_var,
-                f"CatCap_{card.name}_{cat.key}",
+                cashback <= card.monthly_cap * card_active_var,
+                f"MonthlyCap_{card.name}",
             )
 
-    for i, (cap, cat_list) in enumerate(card.grouped_monthly_caps):
-        prob += (
-            lpSum(
-                spend_vars[card.name, c.key] * _rate_for_category(card, c)
-                for c in cat_list
+        for cat, card_cat in card.categories.items():
+            if card_cat.cap != float("inf"):
+                prob += (
+                    spend_vars[card.name, cat.key] * card_cat.rate
+                    <= card_cat.cap * card_active_var,
+                    f"CatCap_{card.name}_{cat.key}",
+                )
+
+        for i, (cap, cat_list) in enumerate(card.grouped_monthly_caps):
+            prob += (
+                lpSum(
+                    spend_vars[card.name, c.key] * _rate_for_category(card, c)
+                    for c in cat_list
+                )
+                <= cap * card_active_var,
+                f"GroupCap_{card.name}_{i}",
             )
-            <= cap * card_active_var,
-            f"GroupCap_{card.name}_{i}",
-        )
 
 
 def _add_lifestyle_plan_constraints(
