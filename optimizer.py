@@ -138,6 +138,7 @@ def _add_regular_cashback_logic(card, spend_vars):
 
 
 def _add_total_spend_constraints(prob, cards, monthly_spending, spend_vars):
+    """Tie per-category spend to the provided monthly_spending (0 when missing)."""
     for cat in ALL_CATEGORIES:
         prob += (
             lpSum(spend_vars[c.name, cat.key] for c in cards)
@@ -149,6 +150,13 @@ def _add_total_spend_constraints(prob, cards, monthly_spending, spend_vars):
 def _add_card_constraints(
     prob, card, total_monthly_spend, spend_vars, card_active_var
 ):
+    """Add per-card spend limit and cashback cap constraints.
+
+    The TotalSpendLimit ensures all spending is gated by ``card_active_var``.
+    Monthly caps, category caps, and grouped caps are expressed in cashback
+    units and are also multiplied by ``card_active_var`` so they only apply when
+    the card is active.
+    """
     total_spend_on_card = lpSum(
         spend_vars[card.name, cat.key] for cat in ALL_CATEGORIES
     )
@@ -157,6 +165,8 @@ def _add_card_constraints(
         f"TotalSpendLimit_{card.name}",
     )
 
+    # Tiered cards manage their own cashback caps inside the tier logic above.
+    # Only the flat cap logic below is skipped for those cards.
     if not card.tiers:
         if (
             not isinstance(card, LifestyleCard)
@@ -198,7 +208,12 @@ def _add_lifestyle_plan_constraints(
         plan_var = plan_vars[plan.name]
         prob += plan_var <= card_active_var
         for i, group in enumerate(plan.categories_rate_cap):
-            cap = next(iter(group.values())).cap
+            caps = {cat_rate.cap for cat_rate in group.values()}
+            if len(caps) > 1:
+                raise ValueError(
+                    "Grouped lifestyle categories must share a single cap value"
+                )
+            cap = caps.pop()
             if cap != float("inf"):
                 cashback = lpSum(
                     spend_vars[lifestyle_card.name, cat.key] * cat_rate.rate
