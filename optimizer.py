@@ -210,8 +210,10 @@ def _add_lifestyle_plan_constraints(
         for i, group in enumerate(plan.categories_rate_cap):
             caps = {cat_rate.cap for cat_rate in group.values()}
             if len(caps) > 1:
+                category_keys = [cat.key for cat in group.keys()]
                 raise ValueError(
-                    "Grouped lifestyle categories must share a single cap value"
+                    f"Grouped lifestyle categories must share a single cap value: "
+                    f"Plan '{plan.name}', group {i}, caps found: {caps}, categories: {category_keys}"
                 )
             cap = caps.pop()
             if cap != float("inf"):
