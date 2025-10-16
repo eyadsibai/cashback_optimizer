@@ -270,10 +270,10 @@ def test_tiered_cashback_respects_category_caps():
     assert result is not None
     
     # The optimizer should allocate spending optimally:
-    # - For dining: 500 SAR to tiered card (50 SAR cashback at 10% = capped)
-    #               500 SAR to baseline card (5 SAR cashback at 1%)
-    # - For grocery: 300 SAR to tiered card (30 SAR cashback at 10% = capped)
-    #                200 SAR to baseline card (2 SAR cashback at 1%)
+    # - For dining: 500 SAR to tiered card (minimum spend needed to reach 50 SAR cashback cap at 10% rate)
+    #               500 SAR to baseline card (remaining spend, 5 SAR cashback at 1%)
+    # - For grocery: 300 SAR to tiered card (minimum spend needed to reach 30 SAR cashback cap at 10% rate)
+    #                200 SAR to baseline card (remaining spend, 2 SAR cashback at 1%)
     # Total cashback per month: 50 + 30 + 5 + 2 = 87 SAR
     # Annual savings: 87 * 12 = 1044 SAR
     expected_savings = (50 + 30 + 5 + 2) * 12
