@@ -84,3 +84,97 @@ def test_minimum_spend_card_gets_deactivated_when_requirement_unmet():
     baseline_only = solve_optimization([baseline_card], monthly_spend)
     assert baseline_only is not None
     assert result.total_savings == pytest.approx(baseline_only.total_savings)
+
+
+def test_tiered_cashback_activates_correct_tier():
+    """Test that tiered cashback cards correctly activate the appropriate tier."""
+    from models import CashbackTier, TierCategory
+
+    tiered_card = CreditCard(
+        name="TieredCard",
+        reference_link="",
+        annual_fee=0.0,
+        tiers=[
+            CashbackTier(
+                name="Tier 1",
+                min_spend=0,
+                max_spend=1999,
+                base_rate=0.01,
+                categories={
+                    categories["dining"]: TierCategory(rate=0.02, cap=50),
+                },
+            ),
+            CashbackTier(
+                name="Tier 2",
+                min_spend=2000,
+                max_spend=float("inf"),
+                base_rate=0.01,
+                categories={
+                    categories["dining"]: TierCategory(rate=0.05, cap=100),
+                },
+            ),
+        ],
+    )
+    
+    # Test with spending in Tier 1 range
+    monthly_spend_tier1 = _monthly_spend({"dining": 1500.0})
+    result_tier1 = solve_optimization([tiered_card], monthly_spend_tier1)
+    assert result_tier1 is not None
+    # Expected cashback: 1500 * 0.02 = 30 (under the 50 cap)
+    expected_tier1 = 30.0 * 12  # Annual savings
+    assert result_tier1.total_savings == pytest.approx(expected_tier1, abs=1e-6)
+    
+    # Test with spending in Tier 2 range
+    monthly_spend_tier2 = _monthly_spend({"dining": 2000.0})
+    result_tier2 = solve_optimization([tiered_card], monthly_spend_tier2)
+    assert result_tier2 is not None
+    # Expected cashback: min(2000 * 0.05, 100) = 100
+    expected_tier2 = 100.0 * 12  # Annual savings
+    assert result_tier2.total_savings == pytest.approx(expected_tier2, abs=1e-6)
+
+
+def test_tiered_cashback_respects_category_caps():
+    """Test that tiered cashback cards respect individual category caps."""
+    from models import CashbackTier, TierCategory
+
+    # Create a baseline card with low rate but no caps
+    baseline_card = CreditCard(
+        name="BaselineCard",
+        reference_link="",
+        annual_fee=0.0,
+        base_rate=0.01,
+    )
+    
+    # Create a tiered card with higher rate but strict caps
+    tiered_card = CreditCard(
+        name="TieredCapCard",
+        reference_link="",
+        annual_fee=0.0,
+        tiers=[
+            CashbackTier(
+                name="Single Tier",
+                min_spend=0,
+                max_spend=float("inf"),
+                base_rate=0.01,
+                categories={
+                    categories["dining"]: TierCategory(rate=0.10, cap=50),
+                    categories["grocery"]: TierCategory(rate=0.10, cap=30),
+                },
+            ),
+        ],
+    )
+    
+    # User spends enough that the caps should be hit
+    monthly_spend = _monthly_spend({"dining": 1000.0, "grocery": 500.0})
+    result = solve_optimization([baseline_card, tiered_card], monthly_spend)
+    assert result is not None
+    
+    # The optimizer should allocate spending optimally:
+    # - For dining: 500 SAR to tiered card (50 SAR cashback at 10% = capped)
+    #               500 SAR to baseline card (5 SAR cashback at 1%)
+    # - For grocery: 300 SAR to tiered card (30 SAR cashback at 10% = capped)
+    #                200 SAR to baseline card (2 SAR cashback at 1%)
+    # Total cashback per month: 50 + 30 + 5 + 2 = 87 SAR
+    # Annual savings: 87 * 12 = 1044 SAR
+    expected_savings = (50 + 30 + 5 + 2) * 12
+    assert result.total_savings == pytest.approx(expected_savings, abs=1e-6)

@@ -62,19 +62,31 @@ def _add_tiered_cashback_logic(
         if tier.max_spend != float("inf"):
             prob += total_spend_on_card <= tier.max_spend + LARGE_NUMBER * (1 - y)
 
+        # Apply category caps - these must be enforced on the raw cashback amounts
         for cat in categories.values():
             tier_cat = tier.categories.get(
                 cat, TierCategory(rate=tier.base_rate, cap=float("inf"))
             )
-            cashback = spend_vars[card.name, cat.key] * tier_cat.rate
-            activated_cashback = LpVariable(
-                f"Cashback_{card.name}_{tier.name}_{cat.key}", lowBound=0
-            )
-            prob += activated_cashback <= LARGE_NUMBER * y
-            prob += activated_cashback <= cashback
             if tier_cat.cap != float("inf"):
+                cashback = spend_vars[card.name, cat.key] * tier_cat.rate
                 prob += cashback <= tier_cat.cap + LARGE_NUMBER * (1 - y)
-            components.append(activated_cashback)
+        
+        # Compute total cashback for this tier as a single expression
+        tier_cashback_expr = lpSum(
+            spend_vars[card.name, cat.key]
+            * tier.categories.get(
+                cat, TierCategory(rate=tier.base_rate, cap=float("inf"))
+            ).rate
+            for cat in categories.values()
+        )
+        
+        # Create one activated cashback variable for the entire tier
+        activated_cashback = LpVariable(
+            f"ActivatedCashback_{card.name}_{tier.name}", lowBound=0
+        )
+        prob += activated_cashback <= LARGE_NUMBER * y
+        prob += activated_cashback <= tier_cashback_expr
+        components.append(activated_cashback)
     return components
 
 
