@@ -8,7 +8,15 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
 pandas = pytest.importorskip("pandas")
 
-from models import CardCategory, CreditCard, categories
+from models import (
+    CardCategory,
+    CashbackTier,
+    CreditCard,
+    LifestyleCard,
+    LifestylePlan,
+    TierCategory,
+    categories,
+)
 from optimizer import solve_optimization
 
 
@@ -84,3 +92,106 @@ def test_minimum_spend_card_gets_deactivated_when_requirement_unmet():
     baseline_only = solve_optimization([baseline_card], monthly_spend)
     assert baseline_only is not None
     assert result.total_savings == pytest.approx(baseline_only.total_savings)
+
+
+def test_tiered_card_selects_highest_available_tier():
+    tier_card = CreditCard(
+        name="TieredPro",
+        reference_link="",
+        annual_fee=0.0,
+        base_rate=0.01,
+        tiers=[
+            CashbackTier(
+                name="Basic",
+                min_spend=0.0,
+                max_spend=499.99,
+                categories={
+                    categories["dining"]: TierCategory(rate=0.02),
+                },
+                base_rate=0.01,
+            ),
+            CashbackTier(
+                name="Preferred",
+                min_spend=500.0,
+                max_spend=float("inf"),
+                categories={
+                    categories["dining"]: TierCategory(rate=0.05),
+                },
+                base_rate=0.01,
+            ),
+        ],
+    )
+
+    monthly_spend = _monthly_spend({"dining": 600.0})
+    result = solve_optimization([tier_card], monthly_spend)
+
+    assert result is not None
+    assert _extract_card_spend(result.results_df, "TieredPro") == pytest.approx(600.0)
+    assert result.total_savings == pytest.approx(600.0 * 0.05 * 12)
+
+
+def test_lifestyle_plan_with_matching_bonus_is_selected():
+    lifestyle_card = LifestyleCard(
+        name="LifeMax",
+        reference_link="",
+        annual_fee=0.0,
+        base_rate=0.01,
+        plans=[
+            LifestylePlan(
+                name="DiningPlan",
+                categories_rate_cap=[
+                    {categories["dining"]: CardCategory(rate=0.04)},
+                ],
+            ),
+            LifestylePlan(
+                name="GroceryPlan",
+                categories_rate_cap=[
+                    {categories["grocery"]: CardCategory(rate=0.07)},
+                ],
+            ),
+        ],
+    )
+
+    monthly_spend = _monthly_spend({"grocery": 800.0})
+    result = solve_optimization([lifestyle_card], monthly_spend)
+
+    assert result is not None
+    assert result.chosen_plan == "GroceryPlan"
+    assert _extract_card_spend(result.results_df, "LifeMax") == pytest.approx(800.0)
+    assert result.total_savings == pytest.approx(800.0 * 0.07 * 12)
+
+
+def test_grouped_cap_limits_bonus_spend():
+    combo_card = CreditCard(
+        name="ComboRewards",
+        reference_link="",
+        annual_fee=0.0,
+        base_rate=0.01,
+        categories={
+            categories["dining"]: CardCategory(rate=0.05),
+            categories["grocery"]: CardCategory(rate=0.05),
+        },
+        grouped_monthly_caps=[
+            (30.0, [categories["dining"], categories["grocery"]]),
+        ],
+    )
+    fallback_card = CreditCard(
+        name="Fallback",
+        reference_link="",
+        annual_fee=0.0,
+        base_rate=0.01,
+    )
+
+    monthly_spend = _monthly_spend({"dining": 400.0, "grocery": 400.0})
+    result = solve_optimization([combo_card, fallback_card], monthly_spend)
+
+    assert result is not None
+    combo_spend = _extract_card_spend(result.results_df, "ComboRewards")
+    fallback_spend = _extract_card_spend(result.results_df, "Fallback")
+
+    assert combo_spend + fallback_spend == pytest.approx(800.0)
+    assert combo_spend == pytest.approx(600.0, abs=1e-2)
+    assert fallback_spend == pytest.approx(200.0, abs=1e-2)
+
+    expected_monthly_cashback = (combo_spend * 0.05) + (fallback_spend * 0.01)
+    assert result.total_savings == pytest.approx(expected_monthly_cashback * 12)
