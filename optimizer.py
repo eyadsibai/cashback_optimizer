@@ -286,7 +286,7 @@ def _build_optimization_problem(
     all_cashback = []
     for card in cards:
         total_spend = lpSum(
-            spend_vars[card.name, cat.key] for cat in categories.values()
+            spend_vars[card.name, cat.key] for cat in ALL_CATEGORIES
         )
         cashback_components: List[LpAffineExpression] = []
         if card.tiers:
