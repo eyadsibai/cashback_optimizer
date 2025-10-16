@@ -15,6 +15,7 @@ from models import (
     CreditCard,
     LifestyleCard,
     OptimizationResult,
+    TierCategory,
     categories,
 )
 
