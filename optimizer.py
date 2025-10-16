@@ -218,10 +218,7 @@ def _add_lifestyle_plan_constraints(
         plan_var = plan_vars[plan.name]
         prob += plan_var <= card_active_var
         for i, group in enumerate(plan.categories_rate_cap):
-            group_caps = {
-                card_cat.cap for card_cat in group.values()
-            }
-            finite_caps = {cap for cap in group_caps if cap != float("inf")}
+            finite_caps = {card_cat.cap for card_cat in group.values() if card_cat.cap != float("inf")}
             if len(finite_caps) > 1:
                 raise ValueError(
                     "Inconsistent caps within a lifestyle plan group: "
