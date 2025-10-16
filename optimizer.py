@@ -92,7 +92,7 @@ def _add_tiered_cashback_logic(
             )
             if tier_cat.cap != float("inf"):
                 cashback = spend_vars[card.name, cat.key] * tier_cat.rate
-                prob += cashback <= tier_cat.cap + LARGE_NUMBER * (1 - y)
+                prob += cashback <= tier_cat.cap * y
         
         # Compute total cashback for this tier as a single expression
         tier_cashback_expr = lpSum(
