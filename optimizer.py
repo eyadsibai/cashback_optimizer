@@ -138,6 +138,13 @@ def _add_regular_cashback_logic(card, spend_vars):
 
 
 def _add_total_spend_constraints(prob, cards, monthly_spending, spend_vars):
+    """Balance total spend per category to match the provided monthly amounts.
+
+    Each constraint enforces that the sum of spending across all cards equals the
+    requested monthly spending for that category (defaulting to 0 when the
+    caller omits a category). This differentiates the spend balancing logic
+    from the cashback cap constraints defined elsewhere.
+    """
     for cat in ALL_CATEGORIES:
         prob += (
             lpSum(spend_vars[c.name, cat.key] for c in cards)
